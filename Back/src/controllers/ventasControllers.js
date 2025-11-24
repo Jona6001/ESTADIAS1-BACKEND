@@ -1758,7 +1758,7 @@ const generarFacturaPDF = async (req, res) => {
     doc
       .fontSize(12)
       .font("Helvetica-Bold")
-      .text("Total:", 390, lineY, { width: 90 });
+      .text("Total:", 390, lineY, { width: 50 });
     doc.text(`$${totalFinal.toFixed(2)} MXN`, 470, lineY, {
       width: 90,
       align: "right",

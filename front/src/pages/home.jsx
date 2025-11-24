@@ -587,7 +587,19 @@ const Home = () => {
             {heroHighlights.map((item) => (
               <div key={item.label} className="home-hero-stat">
                 <span className="home-hero-stat-label">{item.label}</span>
-                <span className="home-hero-stat-value">{item.value}</span>
+                <span
+                  className="home-hero-stat-value"
+                  style={{
+                    wordBreak: 'break-all',
+                    fontSize: String(item.value).replace(/[^\d]/g, '').length > 8 ? '1.1em' : undefined,
+                    lineHeight: 1.1,
+                    maxWidth: 140,
+                    display: 'inline-block',
+                  }}
+                  title={item.value}
+                >
+                  {item.value}
+                </span>
                 {item.hint && (
                   <span className="home-hero-stat-hint">{item.hint}</span>
                 )}

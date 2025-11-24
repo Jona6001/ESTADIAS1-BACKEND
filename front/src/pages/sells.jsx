@@ -1024,9 +1024,6 @@ const Sells = () => {
         // Legacy: setAdjustSummaries removed; if ajustes data needed later, store via dedicated state hook.
       }
 
-      // Inventario: ahora se ajusta automáticamente en el backend por DIFERENCIAS
-      // (aumentos descuentan stock y generan residuo; reducciones regresan piezas).
-      // Ya no recalculamos/confirmamos desde el frontend aquí para evitar doble descuento.
 
       setModalOpen(null);
       setEditTarget(null);
@@ -3274,22 +3271,56 @@ const Sells = () => {
                 const total = Number(ventaResumen.total || 0);
                 const anticipo = Number(ventaResumen.anticipo || 0);
                 const pct = total > 0 ? (anticipo / total) * 100 : 0;
-                if (pct >= 70)
+                const esPagado = (ventaResumen.status || '').toLowerCase() === 'pagado';
+                if (pct >= 70) {
                   return (
-                    <div
-                      style={{
-                        background: "#ecf9f1",
-                        border: "1px solid #b7e4cd",
-                        color: "#25694b",
-                        padding: "6px 10px",
-                        borderRadius: 6,
-                        marginBottom: 12,
-                        fontSize: ".7rem",
-                      }}
-                    >
-                      Umbral alcanzado: ya puedes confirmar la venta.
-                    </div>
+                    <>
+                      <div
+                        style={{
+                          background: "#ecf9f1",
+                          border: "1px solid #b7e4cd",
+                          color: "#25694b",
+                          padding: "6px 10px",
+                          borderRadius: 6,
+                          marginBottom: 12,
+                          fontSize: ".7rem",
+                        }}
+                      >
+                        Umbral alcanzado: ya puedes confirmar la venta.
+                      </div>
+                      {/* Botón para cambiar estado a pagado si el anticipo cubre el total pero el estado no es pagado */}
+                      {total > 0 && anticipo >= total && !esPagado && (
+                        <button
+                          className="ventas-btn"
+                          style={{ marginBottom: 12, fontSize: ".9rem", padding: "7px 16px" }}
+                          onClick={async () => {
+                            try {
+                              const id = ventaResumen.ID || ventaResumen.id;
+                              const res = await fetchWithAuth(
+                                `${API_COTIZACIONES}/${id}/status`,
+                                null,
+                                {
+                                  method: "PATCH",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ status: "pagado" })
+                                }
+                              );
+                              if (!res.ok) throw new Error("No se pudo cambiar el estado");
+                              setVentaResumen((prev) => ({ ...prev, status: "pagado" }));
+                              setModalInfo("El estado ha sido cambiado a <b>pagado</b> correctamente.");
+                              setTimeout(() => setModalInfo(null), 3500);
+                            } catch (e) {
+                              setModalInfo(`<span style='color:#a30015'>${e.message || "Error al cambiar estado"}</span>`);
+                              setTimeout(() => setModalInfo(null), 3500);
+                            }
+                          }}
+                        >
+                          Cambiar estado a pagado
+                        </button>
+                      )}
+                    </>
                   );
+                }
                 const sugerido = total * 0.7;
                 const falta = Math.max(0, sugerido - anticipo);
                 return (
@@ -3671,7 +3702,13 @@ const Sells = () => {
                       required
                     >
                       <option value="">Selecciona un cliente…</option>
-                      {(clientes || []).map((c) => (
+                      {(clientes || []).filter(c => {
+                        // Considera activo si status es true, 1, "activo" (cualquier mayúscula/minúscula)
+                        if (typeof c.status === 'boolean') return c.status;
+                        if (typeof c.status === 'number') return c.status === 1;
+                        if (typeof c.status === 'string') return c.status.trim().toLowerCase() === 'activo';
+                        return false;
+                      }).map((c) => (
                         <option key={c.ID} value={c.ID}>
                           {c.nombre}
                         </option>
